@@ -36,15 +36,8 @@ class PatchDelAdv(BaseModel):
             raise ValueError('too long title')
         return value
 
-    @validator('descr')
-    def check_descr(cls, value: str):
-        if len(value) > 200:
-            raise ValueError('too long descr')
-        return value
-
 
 SCHEMA_TYPE = Type[CreateAdv] | Type[PatchDelAdv]
-
 
 def validate(model_cls: SCHEMA_TYPE, data: Dict[str, Any], exclude_none: bool = True) -> dict:
     try:

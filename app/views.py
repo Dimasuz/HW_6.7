@@ -22,12 +22,20 @@ def error_handler(error: ApiError):
     return response
 
 
+
 def get_item(session: Session, model_cls: Users | Adv, item_id: int) -> Users | Adv:
     item = session.query(model_cls).get(item_id)
 
     if item is None:
         raise ApiError(404, f'{model_cls.__name__.lower()} not found')
     return item
+
+def get_items(session: Session, model_cls: Users | Adv) -> Users | Adv:
+    items = session.query(model_cls).all()
+
+    if items is None:
+        raise ApiError(404, f'{model_cls.__name__.lower()} not found')
+    return items
 
 
 def check_user(session: Session, adv_user_id=0, **item_data):
@@ -47,15 +55,17 @@ class UserView(MethodView):
 
     def get(self, user_id: int):
         with Session() as session:
-            users = get_item(session, Users, user_id)
-            return jsonify({'id': users.id})
+            user = get_item(session, Users, user_id)
+            return jsonify({'id': user.id,
+                            'name': user.name,
+                            'email': user.email,
+                            }
+                           )
 
     def post(self):
         user_data = request.json
         with Session() as session:
-            #
             user_data['password'] = hash_password(user_data['password'])
-            #
             new_user = Users(**user_data)
             session.add(new_user)
             try:
@@ -64,6 +74,12 @@ class UserView(MethodView):
                 raise ApiError(status_cod=409, message='user is already exists')
             return jsonify({'id': new_user.id})
 
+    def delete(self, user_id: int):
+        with Session() as session:
+            users = get_item(session, Users, user_id)
+            session.delete(users)
+            session.commit()
+            return jsonify({'id': users.id})
 
 class AdvView(MethodView):
 
@@ -94,10 +110,7 @@ class AdvView(MethodView):
             for field, value in adv_data.items():
                 setattr(adv, field, value)
             session.add(adv)
-            try:
-                session.commit()
-            except IntegrityError:
-                raise ApiError(409, f"attr already exists")
+            session.commit()
             return jsonify({'id': adv.id})
 
     def delete(self, adv_id: int):
